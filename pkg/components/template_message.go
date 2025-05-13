@@ -49,6 +49,7 @@ func (t TemplateMessageComponentButtonType) GetComponentType() string {
 // TemplateMessageComponentHeaderType represents a header component.
 type TemplateMessageComponentHeaderType struct {
 	Type       TemplateMessageComponentType `json:"type" validate:"required"`                 // "header"
+	Format     *string                      `json:"format,omitempty"`                         // Format for pre-approved templates (e.g., "IMAGE")
 	Parameters *[]TemplateMessageParameter  `json:"parameters,omitempty" validate:"required"` // Parameters for the header component.
 }
 
