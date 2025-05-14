@@ -5,6 +5,7 @@ go 1.21.3
 require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/labstack/echo/v4 v4.12.0
+	github.com/wapikit/wapi.go v0.3.2
 )
 
 require (

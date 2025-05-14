@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/wapikit/wapi.go/internal"
+	"github.com/gTahidi/wapi.go/internal"
 )
 
 // TemplateMessageComponentType represents the type of a template message component.
@@ -48,8 +48,7 @@ func (t TemplateMessageComponentButtonType) GetComponentType() string {
 
 // TemplateMessageComponentHeaderType represents a header component.
 type TemplateMessageComponentHeaderType struct {
-	Type       TemplateMessageComponentType `json:"type" validate:"required"`                 // "header"
-	Format     *string                      `json:"format,omitempty"`                         // Format for pre-approved templates (e.g., "IMAGE")
+	Type       TemplateMessageComponentType `json:"type" validate:"required"`                 // "header"                        // Format for pre-approved templates (e.g., "IMAGE")
 	Parameters *[]TemplateMessageParameter  `json:"parameters,omitempty" validate:"required"` // Parameters for the header component.
 }
 
@@ -129,7 +128,16 @@ type TemplateMessageParameterDateTime struct {
 
 // TemplateMessageParameterMedia represents a media parameter (for document, image, video).
 type TemplateMessageParameterMedia struct {
-	Link string `json:"link" validate:"required"` // URL link of the media.
+	Link string `json:"link,omitempty"` // URL link of the media.
+	ID   string `json:"id,omitempty"`   // Media ID of pre-uploaded media on Meta's servers.
+}
+
+// ValidateMediaParameter ensures either Link or ID is provided
+func (m *TemplateMessageParameterMedia) ValidateMediaParameter() error {
+	if m.Link == "" && m.ID == "" {
+		return fmt.Errorf("either link or id must be provided for media parameter")
+	}
+	return nil
 }
 
 // TemplateMessageParameterLocation represents a location parameter.
@@ -307,6 +315,56 @@ func (tm *TemplateMessage) AddButton(params TemplateMessageComponentButtonType) 
 func (m *TemplateMessage) ToJson(configs ApiCompatibleJsonConverterConfigs) ([]byte, error) {
 	if err := internal.GetValidator().Struct(configs); err != nil {
 		return nil, fmt.Errorf("error validating configs: %v", err)
+	}
+
+	// Validate media parameters (ensure either Link or ID is provided)
+	for _, component := range m.Components {
+		switch c := component.(type) {
+		case TemplateMessageComponentHeaderType:
+			if c.Parameters != nil {
+				for _, param := range *c.Parameters {
+					if headerParam, ok := param.(TemplateMessageBodyAndHeaderParameter); ok {
+						// Check media parameters
+						if headerParam.Image != nil {
+							if err := headerParam.Image.ValidateMediaParameter(); err != nil {
+								return nil, fmt.Errorf("invalid image parameter: %v", err)
+							}
+						}
+						if headerParam.Video != nil {
+							if err := headerParam.Video.ValidateMediaParameter(); err != nil {
+								return nil, fmt.Errorf("invalid video parameter: %v", err)
+							}
+						}
+						if headerParam.Document != nil {
+							if err := headerParam.Document.ValidateMediaParameter(); err != nil {
+								return nil, fmt.Errorf("invalid document parameter: %v", err)
+							}
+						}
+					}
+				}
+			}
+		case TemplateMessageComponentBodyType:
+			for _, param := range c.Parameters {
+				if bodyParam, ok := param.(TemplateMessageBodyAndHeaderParameter); ok {
+					// Check media parameters
+					if bodyParam.Image != nil {
+						if err := bodyParam.Image.ValidateMediaParameter(); err != nil {
+							return nil, fmt.Errorf("invalid image parameter: %v", err)
+						}
+					}
+					if bodyParam.Video != nil {
+						if err := bodyParam.Video.ValidateMediaParameter(); err != nil {
+							return nil, fmt.Errorf("invalid video parameter: %v", err)
+						}
+					}
+					if bodyParam.Document != nil {
+						if err := bodyParam.Document.ValidateMediaParameter(); err != nil {
+							return nil, fmt.Errorf("invalid document parameter: %v", err)
+						}
+					}
+				}
+			}
+		}
 	}
 
 	jsonData := TemplateMessageApiPayload{
